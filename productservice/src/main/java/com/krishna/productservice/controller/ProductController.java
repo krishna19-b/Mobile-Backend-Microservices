@@ -30,12 +30,14 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductResponse> getProductById(
-            @PathVariable Long id) {
-
-        return ResponseEntity.ok(
-                productService.getProductById(id)
-        );
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
+        try {
+            Thread.sleep(5000);
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.ok(productService.getProductById(id));
     }
 
     @GetMapping

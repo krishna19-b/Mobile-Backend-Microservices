@@ -54,7 +54,15 @@ public class GlobalExceptionHandler {
                 "Error received from Product Service"
         );
     }
+    @ExceptionHandler(ProductServiceUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleProductServiceUnavailable(
+            ProductServiceUnavailableException ex) {
 
+        return buildErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ex.getMessage()
+        );
+    }
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(
             RuntimeException ex) {

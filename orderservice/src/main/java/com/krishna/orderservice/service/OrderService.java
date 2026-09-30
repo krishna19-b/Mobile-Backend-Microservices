@@ -9,8 +9,11 @@ import com.krishna.orderservice.dto.response.ProductResponse;
 import com.krishna.orderservice.entity.Order;
 import com.krishna.orderservice.entity.OrderItem;
 import com.krishna.orderservice.entity.OrderStatus;
+import com.krishna.orderservice.exception.ProductServiceUnavailableException;
 import com.krishna.orderservice.repository.OrderItemRepository;
 import com.krishna.orderservice.repository.OrderRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,14 +25,16 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductClient productClient;
+    private final ProductResilienceService productResilienceService;
 
-    public OrderService(OrderRepository orderRepository,
-                        OrderItemRepository orderItemRepository,
-                        ProductClient productClient) {
+    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, ProductClient productClient, ProductResilienceService productResilienceService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productClient = productClient;
+        this.productResilienceService = productResilienceService;
     }
+
+
 
     public OrderResponse createOrder(OrderRequest request) {
 
@@ -37,37 +42,24 @@ public class OrderService {
 
         for (OrderItemRequest itemRequest : request.getItems()) {
 
-            ProductResponse product = productClient.getProduct(itemRequest.getProductId());
+            ProductResponse product = productResilienceService.getProductFromProductService(itemRequest.getProductId());
 
-            if (itemRequest.getQuantity() == null ||
-                    itemRequest.getQuantity() <= 0) {
+            if (itemRequest.getQuantity() == null || itemRequest.getQuantity() <= 0) {
 
-                throw new RuntimeException(
-                        "Quantity must be greater than zero"
-                );
+                throw new RuntimeException("Quantity must be greater than zero");
             }
 
-            if (product.getStockQuantity() == null ||
-                    product.getStockQuantity() <= 0) {
+            if (product.getStockQuantity() == null || product.getStockQuantity() <= 0) {
 
-                throw new RuntimeException(
-                        "Product is out of stock: " +
-                                itemRequest.getProductId()
-                );
+                throw new RuntimeException("Product is out of stock: " + itemRequest.getProductId());
             }
 
             if (itemRequest.getQuantity() > product.getStockQuantity()) {
 
-                throw new RuntimeException(
-                        "Insufficient stock for product: " +
-                                itemRequest.getProductId()
-                );
+                throw new RuntimeException("Insufficient stock for product: " + itemRequest.getProductId());
             }
 
-            BigDecimal subtotal =
-                    product.getPrice().multiply(
-                            BigDecimal.valueOf(itemRequest.getQuantity())
-                    );
+            BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
 
             totalAmount = totalAmount.add(subtotal);
         }
@@ -81,20 +73,13 @@ public class OrderService {
 
         for (OrderItemRequest itemRequest : request.getItems()) {
 
-            ProductResponse product =
-                    productClient.getProduct(itemRequest.getProductId());
+            ProductResponse product = productResilienceService.getProductFromProductService(itemRequest.getProductId());
 
-            productClient.reduceStock(
-                    product.getId(),
-                    itemRequest.getQuantity()
-            );
+            productClient.reduceStock(product.getId(), itemRequest.getQuantity());
 
             BigDecimal price = product.getPrice();
 
-            BigDecimal subtotal =
-                    price.multiply(
-                            BigDecimal.valueOf(itemRequest.getQuantity())
-                    );
+            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
 
             OrderItem orderItem = new OrderItem();
 
@@ -112,9 +97,7 @@ public class OrderService {
 
     public OrderResponse getOrderById(Long id) {
 
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Order not found"));
+        Order order = orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
 
         return mapToResponse(order);
     }
