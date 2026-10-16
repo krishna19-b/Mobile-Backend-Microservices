@@ -558,3 +558,83 @@ Today I continued observability work on the event-driven Mobile Backend Microser
 
 **Note:** This README records the commands and outputs shared during the 15 October 2026 session. It distinguishes verified results from assumptions and does not claim unresolved metrics or unverified scenarios are complete.
 
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------# Dead Letter Topic (DLT) Replay Procedure
+
+## 1. Purpose
+
+This document describes how to inspect failed Kafka messages, identify the cause, correct the issue, and safely replay an event in the Mobile Backend Microservices project.
+
+## 2. Current Configuration
+
+- **Kafka broker:** `localhost:9092`
+- **Notification consumer group:** `notification-group`
+- **Test consumer group:** `notification-dlt-test-group`
+- **Retry interval:** 1 second
+- **Maximum retries:** 2 after the initial attempt
+- **Total processing attempts:** 3
+- **DLT naming convention:** Original topic name + `-dlt`
+
+Example:
+- Original topic: `order.cancelled.test`
+- DLT topic: `order.cancelled.test-dlt`
+
+## 3. Inspect Failed Messages
+
+Run the following PowerShell command to read records from the test DLT:
+
+```powershell
+docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic order.cancelled.test-dlt --from-beginning --timeout-ms 5000
+```
+
+Identify the failed event using its `eventId` and investigate the cause before replaying it.
+
+The consumer may print a `TimeoutException` after the configured timeout if no more records arrive. This does not necessarily indicate a Kafka failure.
+
+## 4. Replay Procedure
+
+1. Identify the failed event in the DLT.
+2. Inspect the exception and determine why processing failed.
+3. Correct the underlying issue, such as invalid JSON, incompatible event fields, or a temporary downstream failure.
+4. Prepare a valid event matching the expected event schema.
+5. Publish the corrected event to the original topic using an approved replay method.
+6. Verify the Notification Service logs and the expected business outcome.
+7. Record the replay result for troubleshooting and auditing.
+
+For the test topic, the original topic is `order.cancelled.test`.
+
+## 5. Safe Replay Rules
+
+- Do not replay malformed JSON without correcting it.
+- Do not repeatedly replay an event when the underlying problem remains unresolved.
+- Preserve the original `eventId` when retrying the same business event.
+- Ensure idempotency checks and business operations are designed to prevent duplicate effects.
+- Use a new event ID only when creating a genuinely new business event, not simply to bypass duplicate detection.
+- Validate the event schema before publishing.
+- For production, use a controlled replay process with appropriate access controls and audit logging.
+
+**Important:** Replaying a record with an already-processed `eventId` may cause an idempotent consumer to skip it. Investigate the original processing result before deciding whether replay is appropriate.
+
+## 6. Verification Checklist
+
+- [ ] Failed event identified in the DLT.
+- [ ] Root cause investigated and corrected.
+- [ ] Event schema and payload validated.
+- [ ] Replay performed to the correct original topic.
+- [ ] Consumer logs checked.
+- [ ] Duplicate processing avoided.
+- [ ] Business outcome verified.
+- [ ] Replay result documented.
+
+## 7. Test Evidence
+
+The following test was verified in the development environment on 16 October 2026:
+
+- Test event ID: `retry-test-001`
+- Source topic: `order.cancelled.test`
+- DLT topic: `order.cancelled.test-dlt`
+- Processing attempts: 3
+- DLT record confirmed: Yes
+
+The test consumer deliberately throws an exception. This test verifies retry handling and DLT publishing, not successful business processing.
+
+
