@@ -2,6 +2,7 @@ package com.krishna.orderservice.entity;
 
 public enum OrderStatus {
 
+    PENDING,
     PLACED,
     CONFIRMED,
     PROCESSING,

@@ -14,5 +14,12 @@ public interface ProductClient {
     ProductResponse getProduct(@PathVariable("id") Long id);
 
     @PutMapping("/api/v1/products/{id}/stock")
-    void reduceStock(@PathVariable("id") Long id, @RequestParam("quantity") Integer quantity);
+    void reduceStock(
+            @PathVariable("id") Long id,
+            @RequestParam("quantity") Integer quantity);
+
+    @PutMapping("/api/v1/products/{id}/stock/release")
+    void releaseStock(
+            @PathVariable("id") Long id,
+            @RequestParam("quantity") Integer quantity);
 }

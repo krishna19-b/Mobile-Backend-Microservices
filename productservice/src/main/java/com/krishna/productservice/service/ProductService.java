@@ -107,6 +107,8 @@ public class ProductService {
     @Transactional
     public void reduceStock(Long productId, Integer quantity) {
 
+        validateQuantity(quantity);
+
         int updatedRows = productRepository.reduceStock(
                 productId,
                 quantity
@@ -115,6 +117,32 @@ public class ProductService {
         if (updatedRows == 0) {
             throw new InsufficientStockException(
                     "Insufficient stock or product not found: " + productId
+            );
+        }
+    }
+
+    @Transactional
+    public void releaseStock(Long productId, Integer quantity) {
+
+        validateQuantity(quantity);
+
+        int updatedRows = productRepository.releaseStock(
+                productId,
+                quantity
+        );
+
+        if (updatedRows == 0) {
+            throw new RuntimeException(
+                    "Product not found while releasing stock: " + productId
+            );
+        }
+    }
+
+    private void validateQuantity(Integer quantity) {
+
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException(
+                    "Quantity must be greater than zero"
             );
         }
     }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Component
 public class CorrelationIdFilter extends OncePerRequestFilter {
@@ -27,30 +28,28 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String correlationId =
-                request.getHeader(CORRELATION_ID);
+        String correlationId = request.getHeader(CORRELATION_ID);
 
         if (correlationId == null ||
                 !correlationId.matches("[a-zA-Z0-9-]{1,64}")) {
-
-            correlationId = "missing";
+            correlationId = UUID.randomUUID().toString();
         }
 
         response.setHeader(CORRELATION_ID, correlationId);
 
-        MDC.put("correlationId", correlationId);
-
-        log.info(
-                "service=orderservice correlationId={} method={} endpoint={}",
-                correlationId,
-                request.getMethod(),
-                request.getRequestURI()
-        );
-
         try {
+            MDC.put(CORRELATION_ID, correlationId);
+
+            log.info(
+                    "service=orderservice correlationId={} method={} endpoint={}",
+                    correlationId,
+                    request.getMethod(),
+                    request.getRequestURI()
+            );
+
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove("correlationId");
+            MDC.remove(CORRELATION_ID);
         }
     }
 }

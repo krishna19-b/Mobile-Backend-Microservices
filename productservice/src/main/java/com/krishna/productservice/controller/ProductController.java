@@ -94,4 +94,13 @@ public class ProductController {
 
         return ResponseEntity.noContent().build();
     }
+    @PutMapping("/{id}/stock/release")
+    public ResponseEntity<Void> releaseStock(
+            @PathVariable Long id,
+            @RequestParam Integer quantity) {
+
+        productService.releaseStock(id, quantity);
+
+        return ResponseEntity.noContent().build();
+    }
 }

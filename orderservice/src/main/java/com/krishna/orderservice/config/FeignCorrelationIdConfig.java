@@ -25,28 +25,19 @@ public class FeignCorrelationIdConfig {
 
         return requestTemplate -> {
 
-            ServletRequestAttributes attributes =
-                    (ServletRequestAttributes)
-                            RequestContextHolder.getRequestAttributes();
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
             if (attributes != null) {
 
-                HttpServletRequest request =
-                        attributes.getRequest();
+                HttpServletRequest request = attributes.getRequest();
 
-                String correlationId =
-                        request.getHeader(CORRELATION_ID);
+                String correlationId =request.getHeader(CORRELATION_ID);
 
-                if (correlationId != null) {
-                    requestTemplate.header(
-                            CORRELATION_ID,
-                            correlationId);
+                if (correlationId != null) {requestTemplate.header(CORRELATION_ID, correlationId);
                 }
             }
 
-            requestTemplate.header(
-                    INTERNAL_SERVICE_KEY,
-                    internalServiceSecret);
+            requestTemplate.header(INTERNAL_SERVICE_KEY, internalServiceSecret);
         };
     }
 }
