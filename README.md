@@ -638,3 +638,82 @@ The following test was verified in the development environment on 16 October 202
 The test consumer deliberately throws an exception. This test verifies retry handling and DLT publishing, not successful business processing.
 
 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---
+
+# Saga Orchestration and Compensation
+
+## 1. Overview
+
+The Order Service coordinates the order workflow using a persisted Saga. The Saga tracks progress across inventory reservation and payment authorization, and compensates inventory if payment fails.
+
+## 2. Saga State Management
+
+The Saga state is stored in the `order_sagas` table, and individual inventory steps are tracked in `order_saga_steps`.
+
+### Saga statuses
+
+- `STARTED` — Saga processing has begun.
+- `INVENTORY_RESERVED` — Inventory reservation completed.
+- `PAYMENT_PENDING` — Payment authorization is pending or needs recovery.
+- `COMPENSATING` — Compensation is in progress.
+- `COMPLETED` — Order workflow completed successfully.
+- `COMPENSATION_FAILED` — Compensation needs further recovery.
+- `FAILED` — Saga ended unsuccessfully after the compensation workflow.
+
+### Inventory step statuses
+
+- `PENDING` — Inventory step has not completed.
+- `RESERVED` — Inventory was reserved.
+- `COMPENSATED` — Reserved inventory was released.
+- `COMPENSATION_FAILED` — Inventory compensation failed and needs recovery.
+
+## 3. Successful workflow
+
+1. Order Service receives the `ORDER_CREATED` event.
+2. The Saga reserves inventory using an operation key for the order item.
+3. Saga state and inventory step status are persisted.
+4. Payment authorization is requested.
+5. If payment is authorized, the order becomes `CONFIRMED` and the Saga becomes `COMPLETED`.
+
+## 4. Failed payment and compensation
+
+If payment fails, the Saga enters compensation:
+
+1. The Saga records the `COMPENSATING` state.
+2. Reserved inventory is released through the Product Service.
+3. Completed compensation is recorded against the inventory step.
+4. After successful compensation, the order becomes `CANCELLED` and the Saga becomes `FAILED`.
+
+The compensation operation key helps prevent duplicate inventory effects when the same operation is retried.
+
+## 5. Recovery
+
+A scheduled recovery method checks unfinished Sagas using the configured `saga.recovery.fixed-delay-ms` property. The configured interval is 10 seconds.
+
+Recovery uses persisted Saga and step states to resume unfinished work. Completed or terminal failed Sagas are skipped. Payment status is checked when an authorization request throws an exception and the payment status can be retrieved.
+
+## 6. Verification results
+
+| Scenario | Observed result |
+|---|---|
+| Successful order workflow — Order 74 | Saga `COMPLETED`; order `CONFIRMED`; inventory step `RESERVED` |
+| Payment failure — Order 75 | Saga `FAILED` after compensation; order `CANCELLED`; inventory step `COMPENSATED` |
+| Repeated compensation operation | No additional stock increase was observed when the compensation operation was repeated |
+| Payment service outage and scheduled recovery | Not yet verified |
+| Late payment event and repeated compensation across multiple service instances | Not yet verified |
+
+These results reflect the database states and behavior observed during the tests. They do not establish that every timeout, late-event, or multi-instance race condition has been tested.
+
+## 7. Main implementation components
+
+- `OrderSagaListener` — Processes order-created events, coordinates Saga steps, and recovers unfinished Sagas.
+- `ProductClient` — Communicates with Product Service to reserve and compensate inventory.
+- `PaymentClient` — Communicates with Payment Service to authorize payments and retrieve payment status.
+- `order_sagas` — Persists Saga-level progress.
+- `order_saga_steps` — Persists inventory-step progress and compensation status.
+
+
+
+
