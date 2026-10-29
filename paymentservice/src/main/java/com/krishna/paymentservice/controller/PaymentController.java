@@ -43,6 +43,14 @@ public class PaymentController {
                 paymentService.refundPayment(orderId));
     }
 
+    @GetMapping("/{orderId}")
+    public ResponseEntity<Payment> getPaymentByOrderId(
+            @PathVariable Long orderId) {
+
+        return ResponseEntity.ok(
+                paymentService.getPaymentByOrderId(orderId));
+    }
+
     public record PaymentRequest(
             @NotNull @Positive Long orderId,
             @NotNull @Positive Long userId,

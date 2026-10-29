@@ -52,6 +52,13 @@ public class PaymentService {
 
         return paymentRepository.save(payment);
     }
+    @Transactional(readOnly = true)
+    public Payment getPaymentByOrderId(Long orderId) {
+        return paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Payment not found for order: " + orderId));
+    }
 
     @Transactional
     public Payment refundPayment(Long orderId) {

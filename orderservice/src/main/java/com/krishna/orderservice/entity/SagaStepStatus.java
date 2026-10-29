@@ -1,4 +1,9 @@
+
 package com.krishna.orderservice.entity;
 
-public class ugf {
+public enum SagaStepStatus {
+    PENDING,
+    RESERVED,
+    COMPENSATED,
+    COMPENSATION_FAILED
 }

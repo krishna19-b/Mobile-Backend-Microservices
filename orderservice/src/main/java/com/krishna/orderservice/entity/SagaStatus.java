@@ -1,4 +1,12 @@
+
 package com.krishna.orderservice.entity;
 
-public class gn {
+public enum SagaStatus {
+    STARTED,
+    INVENTORY_RESERVED,
+    PAYMENT_PENDING,
+    COMPENSATING,
+    COMPLETED,
+    COMPENSATION_FAILED,
+    FAILED
 }

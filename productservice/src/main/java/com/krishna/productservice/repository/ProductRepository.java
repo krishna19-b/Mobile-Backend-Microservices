@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 import java.util.List;
 
@@ -37,5 +39,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     int releaseStock(
             @Param("productId") Long productId,
             @Param("quantity") Integer quantity
+    );
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id = :productId")
+    java.util.Optional<Product> findByIdForUpdate(
+            @Param("productId") Long productId
     );
 }

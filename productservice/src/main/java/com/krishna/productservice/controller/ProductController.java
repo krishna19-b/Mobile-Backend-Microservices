@@ -1,5 +1,7 @@
+
 package com.krishna.productservice.controller;
 
+import com.krishna.productservice.dto.request.InventoryOperationRequest;
 import com.krishna.productservice.dto.request.ProductRequest;
 import com.krishna.productservice.dto.response.ProductResponse;
 import com.krishna.productservice.service.ProductService;
@@ -30,13 +32,9 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
-//        try {
-//            //Thread.sleep(5000);
-//        }
-//        catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+    public ResponseEntity<ProductResponse> getProductById(
+            @PathVariable Long id) {
+
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
@@ -94,12 +92,33 @@ public class ProductController {
 
         return ResponseEntity.noContent().build();
     }
+
     @PutMapping("/{id}/stock/release")
     public ResponseEntity<Void> releaseStock(
             @PathVariable Long id,
             @RequestParam Integer quantity) {
 
         productService.releaseStock(id, quantity);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/stock/reserve")
+    public ResponseEntity<Void> reserveStock(
+            @PathVariable Long id,
+            @Valid @RequestBody InventoryOperationRequest request) {
+
+        productService.reserveStock(id, request);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/stock/compensate")
+    public ResponseEntity<Void> compensateStock(
+            @PathVariable Long id,
+            @Valid @RequestBody InventoryOperationRequest request) {
+
+        productService.compensateStock(id, request);
 
         return ResponseEntity.noContent().build();
     }
